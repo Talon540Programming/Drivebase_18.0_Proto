@@ -6,78 +6,157 @@ package frc.robot;
 
 import static edu.wpi.first.units.Units.*;
 
-import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
+import frc.robot.Constants.OperatorConstants;
+import frc.robot.subsystems.Drive.SetReefSideHeading;
+import frc.robot.subsystems.Drive.CommandSwerveDrivetrain;
+import frc.robot.subsystems.Drive.SetReefCenterHeading;
+import frc.robot.subsystems.Vision.DriveToPose;
+import frc.robot.subsystems.Vision.VisionBase;
+import frc.robot.subsystems.Vision.VisionIOLimelight;
+
+import com.pathplanner.lib.auto.AutoBuilder;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
-import edu.wpi.first.math.geometry.Rotation2d;
+import frc.robot.generated.TunerConstants;
+
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 
-import frc.robot.generated.TunerConstants;
-import frc.robot.subsystems.CommandSwerveDrivetrain;
-
+/**
+ * This class is where the bulk of the robot should be declared. Since Command-based is a
+ * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
+ * periodic methods (other than the scheduler calls). Instead, the structure of the robot (including
+ * subsystems, commands, and trigger mappings) should be declared here.
+ */
 public class RobotContainer {
-    private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
-    private double MaxAngularRate = RotationsPerSecond.of(3).in(RadiansPerSecond); // 3/4 of a rotation per second max angular velocity
+  // The robot's subsystems and commands are defined here...
+  private final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+  private final VisionIOLimelight visionIO = new VisionIOLimelight();
+  private final VisionBase vision = new VisionBase(visionIO, drivetrain);
+  private DriveToPose driveToPose = new DriveToPose(drivetrain, vision);
+  private final SetReefSideHeading autoHeading = new SetReefSideHeading(vision);
+  private final SetReefCenterHeading faceReefCenter = new SetReefCenterHeading(vision);
 
-    /* Setting up bindings for necessary control of the swerve drive platform */
-    private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
-            .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(MaxAngularRate * 0.1) // Add a 10% deadband
-            .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Use open-loop control for drive motors
-    private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
-    private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
+  private final SendableChooser<Command> autoChooser;
 
-    private final Telemetry logger = new Telemetry(MaxSpeed);
+  // Replace with CommandPS4Controller or CommandJoystick if needed
+  private final CommandXboxController m_driverController =
+      new CommandXboxController(OperatorConstants.kDriverControllerPort);
+  
+  private static final double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(edu.wpi.first.units.Units.MetersPerSecond);
+  private double MaxAngularRate = RotationsPerSecond.of(3).in(RadiansPerSecond);
+  private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
+      .withDeadband(MaxSpeed * 0.1)
+      .withRotationalDeadband(MaxAngularRate * 0.1)
+      .withDriveRequestType(com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage);
+  
+  private final SwerveRequest.FieldCentricFacingAngle headingDrive = new SwerveRequest.FieldCentricFacingAngle()
+      .withDeadband(MaxSpeed * 0.1)
+      .withRotationalDeadband(MaxAngularRate * 0.1)
+      .withDriveRequestType(com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage);
+  
+  private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
 
-    private final CommandXboxController joystick = new CommandXboxController(0);
+  private final Telemetry logger = new Telemetry(MaxSpeed);
 
-    public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+  /** The container for the robot. Contains subsystems, OI devices, and commands. */
+  public RobotContainer() {
+    headingDrive.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
+    headingDrive.HeadingController.setPID(11, 0.1, 0.5);
 
-    public RobotContainer() {
-        configureBindings();
-    }
+    configureBindings();
+    
+    drivetrain.setDefaultCommand(
+        drivetrain.run(() -> {
+            double xSpeed = -m_driverController.getLeftY();
+            double ySpeed = -m_driverController.getLeftX();
+            double rotSpeed = -m_driverController.getRightX();
+            
+            // Check if driver is manually rotating - this always takes priority
+            boolean driverRotating = autoHeading.isDriverRotating(rotSpeed);
 
-    private void configureBindings() {
-        // Note that X is defined as forward according to WPILib convention,
-        // and Y is defined as to the left according to WPILib convention.
-        drivetrain.setDefaultCommand(
-            // Drivetrain will execute this command periodically
-            drivetrain.applyRequest(() ->
-                drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
-                    .withVelocityY(-joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
-                    .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
-            )
-        );
+            boolean atSetpoint = driveToPose.isAtSetpoint(0.3);
+            
+            // Determine which auto-heading mode to use (if any)
+            boolean useAutoHeading = autoHeading.isEnabled() && !faceReefCenter.isEnabled() && !driverRotating && !atSetpoint;
+            boolean useFaceReef = faceReefCenter.isEnabled() && !autoHeading.isEnabled() && !driverRotating && !atSetpoint;
 
-        // Idle while the robot is disabled. This ensures the configured
-        // neutral mode is applied to the drive motors while disabled.
-        final var idle = new SwerveRequest.Idle();
-        RobotModeTriggers.disabled().whileTrue(
-            drivetrain.applyRequest(() -> idle).ignoringDisable(true)
-        );
+            
+            if (useAutoHeading) {
+                autoHeading.updateTargetHeading(drivetrain.getPose());
+                
+                drivetrain.setControl(
+                    headingDrive
+                        .withVelocityX(xSpeed * MaxSpeed)
+                        .withVelocityY(ySpeed * MaxSpeed)
+                        .withTargetDirection(autoHeading.getTargetHeading())
+                );
+            } else if (useFaceReef) {
+                faceReefCenter.updateTargetHeading(drivetrain.getPose());
+                
+                drivetrain.setControl(
+                    headingDrive
+                        .withVelocityX(xSpeed * MaxSpeed)
+                        .withVelocityY(ySpeed * MaxSpeed)
+                        .withTargetDirection(faceReefCenter.getTargetHeading())
+                );
+            } else {
+                drivetrain.setControl(
+                    drive
+                        .withVelocityX(xSpeed * MaxSpeed)
+                        .withVelocityY(ySpeed * MaxSpeed)
+                        .withRotationalRate(rotSpeed * MaxAngularRate)
+                );
+            }
+        })
+    );
 
-        joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
-        joystick.b().whileTrue(drivetrain.applyRequest(() ->
-            point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
-        ));
+    autoChooser = AutoBuilder.buildAutoChooser("default auto"); //pick a default
+    SmartDashboard.putData("Auto Chooser", autoChooser);
+  }
 
-        // Run SysId routines when holding back/start and X/Y.
-        // Note that each routine should be run exactly once in a single log.
-        joystick.back().and(joystick.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
-        joystick.back().and(joystick.x()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
-        joystick.start().and(joystick.y()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
-        joystick.start().and(joystick.x()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
+  
+  private void configureBindings() {
+    m_driverController.start().onTrue(Commands.runOnce(drivetrain::seedFieldCentric));
+    m_driverController.b().whileTrue(drivetrain.applyRequest(() -> brake));
 
-        // reset the field-centric heading on left bumper press
-        joystick.leftBumper().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
+    // Y button toggles face reef center - also disables auto heading if it's on
+    m_driverController.y().onTrue(Commands.runOnce(() -> {
+        if (autoHeading.isEnabled()) {
+            autoHeading.disableAutoHeading();
+        }
+        faceReefCenter.toggleFaceReef();
+    }));
+
+    // Update the existing povDown binding to also disable face reef
+    m_driverController.povDown().onTrue(Commands.runOnce(() -> {
+        if (faceReefCenter.isEnabled()) {
+            faceReefCenter.disableFaceReef();
+        }
+        autoHeading.toggleAutoHeading();
+    }));
+
+    m_driverController.povUp().whileTrue(
+        (driveToPose.createReefPathCommand(DriveToPose.Side.Middle).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
+
+    m_driverController.leftBumper().whileTrue(
+        (driveToPose.createReefPathCommand(DriveToPose.Side.Left).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
+
+    m_driverController.rightBumper().whileTrue(
+        (driveToPose.createReefPathCommand(DriveToPose.Side.Right).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
+
+    m_driverController.leftTrigger().whileTrue(
+        (driveToPose.createStationPathCommand().until(() -> driveToPose.haveStationConditionsChanged()).repeatedly()));
 
         drivetrain.registerTelemetry(logger::telemeterize);
-    }
 
-    public Command getAutonomousCommand() {
-        return Commands.print("No autonomous command configured");
-    }
+  }
+
+  public Command getAutonomousCommand() {
+    return autoChooser.getSelected();
+  }
+
 }
