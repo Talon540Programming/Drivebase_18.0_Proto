@@ -113,7 +113,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     );
 
     /* The SysId routine to test */
-    private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineTranslation;
+    private SysIdRoutine m_sysIdRoutineToApply;
 
        /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
@@ -387,4 +387,23 @@ public void addVisionMeasurement(
         m_simThread.setDaemon(true);
         m_simThread.start();
     }
+
+    public void useSysIdTranslation() {
+        m_sysIdRoutineToApply = m_sysIdRoutineTranslation;
+    }
+    
+    /**
+     * Switches to steer SysId (azimuth motors).
+     */
+    public void useSysIdSteer() {
+        m_sysIdRoutineToApply = m_sysIdRoutineSteer;
+    }
+    
+    /**
+     * Switches to rotation SysId (whole robot spinning).
+     */
+    public void useSysIdRotation() {
+        m_sysIdRoutineToApply = m_sysIdRoutineRotation;
+    }
+
 }

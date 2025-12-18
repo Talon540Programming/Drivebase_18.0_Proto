@@ -24,6 +24,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -115,6 +117,46 @@ public class RobotContainer {
     );
 
     autoChooser = AutoBuilder.buildAutoChooser("default auto"); //pick a default
+
+    // Add SysId routines as auto options
+    autoChooser.addOption("SysId Translation Quasistatic Forward", 
+        drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    autoChooser.addOption("SysId Translation Quasistatic Reverse", 
+        drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    autoChooser.addOption("SysId Translation Dynamic Forward", 
+        drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    autoChooser.addOption("SysId Translation Dynamic Reverse", 
+        drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+    // Steer SysId - need to switch routine first
+    autoChooser.addOption("SysId Steer Quasistatic Forward", 
+        Commands.runOnce(() -> drivetrain.useSysIdSteer())
+            .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward)));
+    autoChooser.addOption("SysId Steer Quasistatic Reverse", 
+        Commands.runOnce(() -> drivetrain.useSysIdSteer())
+            .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse)));
+    autoChooser.addOption("SysId Steer Dynamic Forward", 
+        Commands.runOnce(() -> drivetrain.useSysIdSteer())
+            .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward)));
+    autoChooser.addOption("SysId Steer Dynamic Reverse", 
+        Commands.runOnce(() -> drivetrain.useSysIdSteer())
+            .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse)));
+
+    // Rotation SysId
+    autoChooser.addOption("SysId Rotation Quasistatic Forward", 
+        Commands.runOnce(() -> drivetrain.useSysIdRotation())
+            .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward)));
+    autoChooser.addOption("SysId Rotation Quasistatic Reverse", 
+        Commands.runOnce(() -> drivetrain.useSysIdRotation())
+            .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse)));
+    autoChooser.addOption("SysId Rotation Dynamic Forward", 
+        Commands.runOnce(() -> drivetrain.useSysIdRotation())
+            .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward)));
+    autoChooser.addOption("SysId Rotation Dynamic Reverse", 
+        Commands.runOnce(() -> drivetrain.useSysIdRotation())
+            .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse)));
+
+
     SmartDashboard.putData("Auto Chooser", autoChooser);
   }
 
