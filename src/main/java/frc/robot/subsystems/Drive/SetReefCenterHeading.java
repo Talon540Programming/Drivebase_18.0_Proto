@@ -4,12 +4,11 @@ import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.FieldPoses;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.Vision.VisionBase;
 
-public class SetReefCenterHeading extends SubsystemBase {
+public class SetReefCenterHeading{
 
     private final VisionBase vision;
     
@@ -70,8 +69,4 @@ public class SetReefCenterHeading extends SubsystemBase {
         return Math.abs(rotationInput) > OperatorConstants.DEADBAND;
     }
 
-    @Override
-    public void periodic() {
-        Logger.recordOutput("FaceReefCenter/Enabled", faceReefEnabled);
-    }
 }

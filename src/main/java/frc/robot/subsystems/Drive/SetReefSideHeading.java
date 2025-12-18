@@ -1,6 +1,5 @@
 package frc.robot.subsystems.Drive;
 
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import org.littletonrobotics.junction.Logger;
 
@@ -11,7 +10,7 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.Vision.VisionBase;
 
 
-public class SetReefSideHeading extends SubsystemBase{
+public class SetReefSideHeading{
 
     private final VisionBase vision;
 
@@ -64,10 +63,5 @@ public class SetReefSideHeading extends SubsystemBase{
 
     public boolean isDriverRotating(double rotationInput) {
         return Math.abs(rotationInput) > OperatorConstants.DEADBAND;
-    }
-
-    @Override
-    public void periodic() {
-        Logger.recordOutput("AutoHeading/Enabled", autoHeadingEnabled);
     }
 }
