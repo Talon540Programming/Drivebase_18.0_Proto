@@ -18,9 +18,11 @@ public interface VisionIO {
         public int seenTagCount = 0;
         public boolean isRedAlliance = false;
         public double avgTagDistance = 0.0;
+        public String cameraName = "";
     }
 
-    default void updateVisionIOInputs(VisionIOInputs io){}
+    default void updateVisionIOInputs(VisionIOInputs ioOne, VisionIOInputs ioTwo){}
+
 
     default void updateLimelightYaw(CommandSwerveDrivetrain drivetrain){}  
 }

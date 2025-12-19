@@ -46,13 +46,11 @@ public class VisionIOLimelight implements VisionIO {
             input.seenTagCount = 0;
         }
     }
-    
-
     @Override
-public void updateLimelightYaw(CommandSwerveDrivetrain drivetrain) {
-    double yaw = drivetrain.getPose().getRotation().getDegrees();
-    LimelightHelpers.SetRobotOrientation(limelightOne, yaw, 0, 0, 0, 0, 0);
-    LimelightHelpers.SetRobotOrientation(limelightTwo, yaw, 0, 0, 0, 0, 0);
+    public void updateLimelightYaw(CommandSwerveDrivetrain drivetrain) {
+        double yaw = drivetrain.getPose().getRotation().getDegrees();
+        LimelightHelpers.SetRobotOrientation(limelightOne, yaw, 0, 0, 0, 0, 0);
+        LimelightHelpers.SetRobotOrientation(limelightTwo, yaw, 0, 0, 0, 0, 0);
 }
 
 }

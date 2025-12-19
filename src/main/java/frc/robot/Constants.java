@@ -29,7 +29,8 @@ public final class Constants {
     public static final double DEADBAND = 0.1;
   }
 
-  public static final String kLimelightName = "limelight";
+  public static final String kLimelightOne = "limelight-one";
+  public static final String kLimelightTwo = "limelight-two";
 
   public static enum Reef {
     left,
