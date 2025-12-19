@@ -125,7 +125,7 @@ public class DriveToPose{
         
             PathPlannerPath path = new PathPlannerPath(
                 waypoints, 
-                Constants.PathPlannerConstants.fastConstraints,
+                Constants.PathPlannerConstants.defaultConstraints,
                 new IdealStartingState(Math.max(drivetrain.getVelocityMagnitude().in(MetersPerSecond), 1.0), drivetrain.getHeading()), 
                 new GoalEndState(0.0, waypoint.getRotation()));  // Final ROBOT heading stays here
             
