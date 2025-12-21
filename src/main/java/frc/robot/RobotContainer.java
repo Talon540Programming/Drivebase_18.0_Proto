@@ -14,6 +14,7 @@ import frc.robot.subsystems.Drive.SetReefCenterHeading;
 import frc.robot.subsystems.Drive.SetReefSideHeading;
 import frc.robot.subsystems.Vision.VisionBase;
 import frc.robot.subsystems.Vision.VisionIOLimelight;
+import edu.wpi.first.math.filter.SlewRateLimiter;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.ctre.phoenix6.swerve.SwerveRequest;
@@ -35,171 +36,185 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
  * subsystems, commands, and trigger mappings) should be declared here.
  */
 public class RobotContainer {
-  // The robot's subsystems and commands are defined here...
-  private final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
-  private final VisionIOLimelight visionIO = new VisionIOLimelight();
-  private final VisionBase vision = new VisionBase(visionIO, drivetrain);
-  private DriveToPose driveToPose = new DriveToPose(drivetrain, vision);
-  private final SetReefSideHeading autoHeading = new SetReefSideHeading(vision);
-  private final SetReefCenterHeading faceReefCenter = new SetReefCenterHeading(vision);
+    // The robot's subsystems and commands are defined here...
+    private final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+    private final VisionIOLimelight visionIO = new VisionIOLimelight();
+    private final VisionBase vision = new VisionBase(visionIO, drivetrain);
+    private DriveToPose driveToPose = new DriveToPose(drivetrain, vision);
+    private final SetReefSideHeading autoHeading = new SetReefSideHeading(vision);
+    private final SetReefCenterHeading faceReefCenter = new SetReefCenterHeading(vision);
 
-  private final SendableChooser<Command> autoChooser;
+    private final SendableChooser<Command> autoChooser;
 
-  // Replace with CommandPS4Controller or CommandJoystick if needed
-  private final CommandXboxController m_driverController =
+    // Replace with CommandPS4Controller or CommandJoystick if needed
+    private final CommandXboxController m_driverController =
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
-  
-  private static final double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(edu.wpi.first.units.Units.MetersPerSecond);
-  private double MaxAngularRate = RotationsPerSecond.of(3).in(RadiansPerSecond);
-  private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
-      .withDeadband(MaxSpeed * 0.1)
+
+    private final SlewRateLimiter xLimiter = new SlewRateLimiter(4.0);
+    private final SlewRateLimiter yLimiter = new SlewRateLimiter(4.0);
+    private final SlewRateLimiter rotLimiter = new SlewRateLimiter(5.0);
+
+    private static final double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(edu.wpi.first.units.Units.MetersPerSecond);
+    private double MaxAngularRate = RotationsPerSecond.of(1.5).in(RadiansPerSecond);
+    private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
+      .withDeadband(0)
       .withRotationalDeadband(MaxAngularRate * 0.1)
       .withDriveRequestType(com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage);
   
-  private final SwerveRequest.FieldCentricFacingAngle headingDrive = new SwerveRequest.FieldCentricFacingAngle()
-      .withDeadband(MaxSpeed * 0.1)
+    private final SwerveRequest.FieldCentricFacingAngle headingDrive = new SwerveRequest.FieldCentricFacingAngle()
+      .withDeadband(0)
       .withRotationalDeadband(MaxAngularRate * 0.1)
       .withDriveRequestType(com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage);
   
-  private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
+    private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
 
-  private final Telemetry logger = new Telemetry(MaxSpeed);
+    private final Telemetry logger = new Telemetry(MaxSpeed);
 
-  /** The container for the robot. Contains subsystems, OI devices, and commands. */
-  public RobotContainer() {
-    headingDrive.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
-    headingDrive.HeadingController.setPID(11, 0.1, 0.5);
+    /** The container for the robot. Contains subsystems, OI devices, and commands. */
+    public RobotContainer() {
+        headingDrive.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
+        headingDrive.HeadingController.setPID(11, 0.1, 0.5);
 
-    configureBindings();
-    
-    drivetrain.setDefaultCommand(
-        drivetrain.run(() -> {
-            double xSpeed = -m_driverController.getLeftY();
-            double ySpeed = -m_driverController.getLeftX();
-            double rotSpeed = -m_driverController.getRightX();
-            
-            // Check if driver is manually rotating - this always takes priority
-            boolean driverRotating = autoHeading.isDriverRotating(rotSpeed);
-
-            boolean atSetpoint = driveToPose.isAtSetpoint(0.3);
-            
-            // Determine which auto-heading mode to use (if any)
-            boolean useAutoHeading = autoHeading.isEnabled() && !faceReefCenter.isEnabled() && !driverRotating && !atSetpoint;
-            boolean useFaceReef = faceReefCenter.isEnabled() && !autoHeading.isEnabled() && !driverRotating && !atSetpoint;
-
-            
-            if (useAutoHeading) {
-                autoHeading.updateTargetHeading(drivetrain.getPose());
+        configureBindings();
+        
+        drivetrain.setDefaultCommand(
+            drivetrain.run(() -> {
+                // Get raw joystick inputs
+                double rawX = -m_driverController.getLeftY();
+                double rawY = -m_driverController.getLeftX();
+                double rawRot = -m_driverController.getRightX();
                 
-                drivetrain.setControl(
-                    headingDrive
-                        .withVelocityX(xSpeed * MaxSpeed)
-                        .withVelocityY(ySpeed * MaxSpeed)
-                        .withTargetDirection(autoHeading.getTargetHeading())
-                );
-            } else if (useFaceReef) {
-                faceReefCenter.updateTargetHeading(drivetrain.getPose());
+                // Apply deadband BEFORE the limiter
+                double deadband = 0.1;
+                rawX = Math.abs(rawX) > deadband ? rawX : 0.0;
+                rawY = Math.abs(rawY) > deadband ? rawY : 0.0;
+                rawRot = Math.abs(rawRot) > deadband ? rawRot : 0.0;
                 
-                drivetrain.setControl(
-                    headingDrive
-                        .withVelocityX(xSpeed * MaxSpeed)
-                        .withVelocityY(ySpeed * MaxSpeed)
-                        .withTargetDirection(faceReefCenter.getTargetHeading())
-                );
-            } else {
-                drivetrain.setControl(
-                    drive
-                        .withVelocityX(xSpeed * MaxSpeed)
-                        .withVelocityY(ySpeed * MaxSpeed)
-                        .withRotationalRate(rotSpeed * MaxAngularRate)
-                );
+                // Now apply slew rate limiting
+                double xSpeed = xLimiter.calculate(rawX);
+                double ySpeed = yLimiter.calculate(rawY);
+                double rotSpeed = rotLimiter.calculate(rawRot);
+                
+                // Check if driver is manually rotating - this always takes priority
+                boolean driverRotating = autoHeading.isDriverRotating(rotSpeed);
+                boolean atSetpoint = driveToPose.isAtSetpoint(0.3);
+                
+                // Determine which auto-heading mode to use (if any)
+                boolean useAutoHeading = autoHeading.isEnabled() && !faceReefCenter.isEnabled() && !driverRotating && !atSetpoint;
+                boolean useFaceReef = faceReefCenter.isEnabled() && !autoHeading.isEnabled() && !driverRotating && !atSetpoint;
+
+                if (useAutoHeading) {
+                    autoHeading.updateTargetHeading(drivetrain.getPose());
+                    
+                    drivetrain.setControl(
+                        headingDrive
+                            .withVelocityX(xSpeed * MaxSpeed)
+                            .withVelocityY(ySpeed * MaxSpeed)
+                            .withTargetDirection(autoHeading.getTargetHeading())
+                    );
+                } else if (useFaceReef) {
+                    faceReefCenter.updateTargetHeading(drivetrain.getPose());
+                    
+                    drivetrain.setControl(
+                        headingDrive
+                            .withVelocityX(xSpeed * MaxSpeed)
+                            .withVelocityY(ySpeed * MaxSpeed)
+                            .withTargetDirection(faceReefCenter.getTargetHeading())
+                    );
+                } else {
+                    drivetrain.setControl(
+                        drive
+                            .withVelocityX(xSpeed * MaxSpeed)
+                            .withVelocityY(ySpeed * MaxSpeed)
+                            .withRotationalRate(rotSpeed * MaxAngularRate)
+                    );
+                }
+            })
+        );
+
+        autoChooser = AutoBuilder.buildAutoChooser("default auto"); //pick a default
+
+        // Add SysId routines as auto options
+        autoChooser.addOption("SysId Translation Quasistatic Forward", 
+            drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+        autoChooser.addOption("SysId Translation Quasistatic Reverse", 
+            drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+        autoChooser.addOption("SysId Translation Dynamic Forward", 
+            drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward));
+        autoChooser.addOption("SysId Translation Dynamic Reverse", 
+            drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+        // Steer SysId - need to switch routine first
+        autoChooser.addOption("SysId Steer Quasistatic Forward", 
+            Commands.runOnce(() -> drivetrain.useSysIdSteer())
+                .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward)));
+        autoChooser.addOption("SysId Steer Quasistatic Reverse", 
+            Commands.runOnce(() -> drivetrain.useSysIdSteer())
+                .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse)));
+        autoChooser.addOption("SysId Steer Dynamic Forward", 
+            Commands.runOnce(() -> drivetrain.useSysIdSteer())
+                .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward)));
+        autoChooser.addOption("SysId Steer Dynamic Reverse", 
+            Commands.runOnce(() -> drivetrain.useSysIdSteer())
+                .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse)));
+
+        // Rotation SysId
+        autoChooser.addOption("SysId Rotation Quasistatic Forward", 
+            Commands.runOnce(() -> drivetrain.useSysIdRotation())
+                .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward)));
+        autoChooser.addOption("SysId Rotation Quasistatic Reverse", 
+            Commands.runOnce(() -> drivetrain.useSysIdRotation())
+                .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse)));
+        autoChooser.addOption("SysId Rotation Dynamic Forward", 
+            Commands.runOnce(() -> drivetrain.useSysIdRotation())
+                .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward)));
+        autoChooser.addOption("SysId Rotation Dynamic Reverse", 
+            Commands.runOnce(() -> drivetrain.useSysIdRotation())
+                .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse)));
+
+
+        SmartDashboard.putData("Auto Chooser", autoChooser);
+    }
+
+  
+    private void configureBindings() {
+        m_driverController.start().onTrue(Commands.runOnce(drivetrain::seedFieldCentric));
+        m_driverController.b().whileTrue(drivetrain.applyRequest(() -> brake));
+
+        // Y button toggles face reef center - also disables auto heading if it's on
+        m_driverController.y().onTrue(Commands.runOnce(() -> {
+            if (autoHeading.isEnabled()) {
+                autoHeading.disableAutoHeading();
             }
-        })
-    );
+            faceReefCenter.toggleFaceReef();
+        }));
 
-    autoChooser = AutoBuilder.buildAutoChooser("default auto"); //pick a default
+        // Update the existing povDown binding to also disable face reef
+        m_driverController.povDown().onTrue(Commands.runOnce(() -> {
+            if (faceReefCenter.isEnabled()) {
+                faceReefCenter.disableFaceReef();
+            }
+            autoHeading.toggleAutoHeading();
+        }));
 
-    // Add SysId routines as auto options
-    autoChooser.addOption("SysId Translation Quasistatic Forward", 
-        drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    autoChooser.addOption("SysId Translation Quasistatic Reverse", 
-        drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    autoChooser.addOption("SysId Translation Dynamic Forward", 
-        drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    autoChooser.addOption("SysId Translation Dynamic Reverse", 
-        drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+        m_driverController.povUp().whileTrue(
+            (driveToPose.createReefPathCommand(DriveToPose.Side.Middle).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
 
-    // Steer SysId - need to switch routine first
-    autoChooser.addOption("SysId Steer Quasistatic Forward", 
-        Commands.runOnce(() -> drivetrain.useSysIdSteer())
-            .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward)));
-    autoChooser.addOption("SysId Steer Quasistatic Reverse", 
-        Commands.runOnce(() -> drivetrain.useSysIdSteer())
-            .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse)));
-    autoChooser.addOption("SysId Steer Dynamic Forward", 
-        Commands.runOnce(() -> drivetrain.useSysIdSteer())
-            .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward)));
-    autoChooser.addOption("SysId Steer Dynamic Reverse", 
-        Commands.runOnce(() -> drivetrain.useSysIdSteer())
-            .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse)));
+        m_driverController.leftBumper().whileTrue(
+            (driveToPose.createReefPathCommand(DriveToPose.Side.Left).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
 
-    // Rotation SysId
-    autoChooser.addOption("SysId Rotation Quasistatic Forward", 
-        Commands.runOnce(() -> drivetrain.useSysIdRotation())
-            .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward)));
-    autoChooser.addOption("SysId Rotation Quasistatic Reverse", 
-        Commands.runOnce(() -> drivetrain.useSysIdRotation())
-            .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse)));
-    autoChooser.addOption("SysId Rotation Dynamic Forward", 
-        Commands.runOnce(() -> drivetrain.useSysIdRotation())
-            .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward)));
-    autoChooser.addOption("SysId Rotation Dynamic Reverse", 
-        Commands.runOnce(() -> drivetrain.useSysIdRotation())
-            .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse)));
+        m_driverController.rightBumper().whileTrue(
+            (driveToPose.createReefPathCommand(DriveToPose.Side.Right).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
 
+        m_driverController.leftTrigger().whileTrue(
+            (driveToPose.createStationPathCommand().until(() -> driveToPose.haveStationConditionsChanged()).repeatedly()));
 
-    SmartDashboard.putData("Auto Chooser", autoChooser);
-  }
+            drivetrain.registerTelemetry(logger::telemeterize);
 
-  
-  private void configureBindings() {
-    m_driverController.start().onTrue(Commands.runOnce(drivetrain::seedFieldCentric));
-    m_driverController.b().whileTrue(drivetrain.applyRequest(() -> brake));
+    }
 
-    // Y button toggles face reef center - also disables auto heading if it's on
-    m_driverController.y().onTrue(Commands.runOnce(() -> {
-        if (autoHeading.isEnabled()) {
-            autoHeading.disableAutoHeading();
-        }
-        faceReefCenter.toggleFaceReef();
-    }));
-
-    // Update the existing povDown binding to also disable face reef
-    m_driverController.povDown().onTrue(Commands.runOnce(() -> {
-        if (faceReefCenter.isEnabled()) {
-            faceReefCenter.disableFaceReef();
-        }
-        autoHeading.toggleAutoHeading();
-    }));
-
-    m_driverController.povUp().whileTrue(
-        (driveToPose.createReefPathCommand(DriveToPose.Side.Middle).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
-
-    m_driverController.leftBumper().whileTrue(
-        (driveToPose.createReefPathCommand(DriveToPose.Side.Left).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
-
-    m_driverController.rightBumper().whileTrue(
-        (driveToPose.createReefPathCommand(DriveToPose.Side.Right).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
-
-    m_driverController.leftTrigger().whileTrue(
-        (driveToPose.createStationPathCommand().until(() -> driveToPose.haveStationConditionsChanged()).repeatedly()));
-
-        drivetrain.registerTelemetry(logger::telemeterize);
-
-  }
-
-  public Command getAutonomousCommand() {
-    return autoChooser.getSelected();
-  }
+    public Command getAutonomousCommand() {
+        return autoChooser.getSelected();
+    }
 
 }
