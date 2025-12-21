@@ -13,7 +13,8 @@ import frc.robot.subsystems.Vision.VisionIO.VisionIOInputs;
 public class VisionBase extends SubsystemBase{
 
     private final VisionIO vision;
-    private final VisionIOInputs limelight = new VisionIOInputs();
+    private final VisionIOInputs limelightOne = new VisionIOInputs();
+    private final VisionIOInputs limelightTwo = new VisionIOInputs();
     private final CommandSwerveDrivetrain drivetrain;
 
 
@@ -25,39 +26,49 @@ public class VisionBase extends SubsystemBase{
     @Override
     public void periodic() {
         vision.updateLimelightYaw(drivetrain);
-        vision.updateVisionIOInputs(limelight);
-    
-        if (limelight.seenTagCount > 0 && limelight.hasTarget) {
-            // Reject if pose is outside the field
-            if (limelight.pose.getX() < 0 || limelight.pose.getX() > 17.55 ||
-                limelight.pose.getY() < 0 || limelight.pose.getY() > 8.05) {
-                Logger.recordOutput("Vision/Rejected", "Out of field bounds");
-                return;
-            }
-            
-            // Reject if pose jumped too far from current estimate (possible glitch)
-            double poseDelta = drivetrain.getPose().getTranslation()
-            .getDistance(limelight.pose.getTranslation());
+        vision.updateVisionIOInputs(limelightOne, limelightTwo);
 
-            // Allow big corrections when vision is confident
-            boolean visionIsConfident = limelight.seenTagCount >= 1 && limelight.avgTagDistance < 3.0;
+        // Process both cameras
+        processVisionMeasurement(limelightOne);
+        processVisionMeasurement(limelightTwo);
 
-            if (poseDelta > 1.5 && !visionIsConfident) {
-                Logger.recordOutput("Vision/Rejected", "Large jump with low confidence");
-                return;
-            }
-            
-            // Reject during fast rotation (motion blur causes bad readings)
-            if (Math.abs(drivetrain.getFieldVelocity().omegaRadiansPerSecond) > Math.toRadians(180)) {
-                Logger.recordOutput("Vision/Rejected", "Rotating too fast");
-                return;
-            }
-            
-            Matrix<N3, N1> stdDevs = calculateStdDevs(limelight);
-            drivetrain.addVisionMeasurement(limelight.pose, limelight.limelightTimestamp, stdDevs);
+        Logger.recordOutput("Vision/EstimatedPoseOne", limelightOne.pose);
+        Logger.recordOutput("Vision/EstimatedPoseTwo", limelightTwo.pose);
+    }
+
+    private void processVisionMeasurement(VisionIOInputs input) {
+        if (input.seenTagCount <= 0 || !input.hasTarget) {
+            return;
         }
-        
-        Logger.recordOutput("Vision/EstimatedPose", limelight.pose);
+
+        // Reject if pose is outside the field
+        if (input.pose.getX() < 0 || input.pose.getX() > 17.55 ||
+            input.pose.getY() < 0 || input.pose.getY() > 8.05) {
+            Logger.recordOutput("Vision/Rejected/" + input.cameraName, "Out of field bounds");
+            return;
+        }
+
+        // Reject if pose jumped too far from current estimate (possible glitch)
+        double poseDelta = drivetrain.getPose().getTranslation()
+            .getDistance(input.pose.getTranslation());
+
+        // Allow big corrections when vision is confident
+        boolean visionIsConfident = input.seenTagCount >= 1 && input.avgTagDistance < 3.0;
+
+        if (poseDelta > 1.5 && !visionIsConfident) {
+            Logger.recordOutput("Vision/Rejected/" + input.cameraName, "Large jump with low confidence");
+            return;
+        }
+
+        // Reject during fast rotation (motion blur causes bad readings)
+        if (Math.abs(drivetrain.getFieldVelocity().omegaRadiansPerSecond) > Math.toRadians(180)) {
+            Logger.recordOutput("Vision/Rejected/" + input.cameraName, "Rotating too fast");
+            return;
+        }
+
+        Matrix<N3, N1> stdDevs = calculateStdDevs(input);
+        drivetrain.addVisionMeasurement(input.pose, input.limelightTimestamp, stdDevs);
+        Logger.recordOutput("Vision/Accepted/" + input.cameraName, input.pose);
     }
 
     private Matrix<N3, N1> calculateStdDevs(VisionIOInputs input) {
@@ -79,19 +90,28 @@ public class VisionBase extends SubsystemBase{
     return VecBuilder.fill(xyStdDev, xyStdDev, rotStdDev);
     }
 
-    public VisionIOInputs getVisionIOInputs(){
-        return limelight;
+    public VisionIOInputs getVisionIOInputsOne() {
+        return limelightOne;
     }
-
+    
+    public VisionIOInputs getVisionIOInputsTwo() {
+        return limelightTwo;
+    }
+    
     public boolean hasTarget() {
-        return limelight.hasTarget;
+        return limelightOne.hasTarget || limelightTwo.hasTarget;
     }
     
     public double getTX() {
-        return limelight.limelightTX;
+        // Return TX from whichever camera has a target, prioritizing camera one
+        if (limelightOne.hasTarget) {
+            return limelightOne.limelightTX;
+        }
+        return limelightTwo.limelightTX;
     }
-    
+
     public boolean isRedAlliance() {
-        return limelight.isRedAlliance;
-    }
+        // Both should have the same value, just pick one
+        return limelightOne.isRedAlliance;
+    }    
 }
