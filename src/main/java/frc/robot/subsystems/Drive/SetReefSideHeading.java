@@ -62,6 +62,6 @@ public class SetReefSideHeading{
     }
 
     public boolean isDriverRotating(double rotationInput) {
-        return Math.abs(rotationInput) > OperatorConstants.DEADBAND;
+        return Math.abs(rotationInput) > OperatorConstants.deadband;
     }
 }

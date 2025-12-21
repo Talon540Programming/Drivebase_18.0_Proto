@@ -50,9 +50,9 @@ public class RobotContainer {
     private final CommandXboxController m_driverController =
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
 
-    private final SlewRateLimiter xLimiter = new SlewRateLimiter(4.0);
-    private final SlewRateLimiter yLimiter = new SlewRateLimiter(4.0);
-    private final SlewRateLimiter rotLimiter = new SlewRateLimiter(5.0);
+    private final SlewRateLimiter xLimiter = new SlewRateLimiter(6.0);
+    private final SlewRateLimiter yLimiter = new SlewRateLimiter(6.0);
+    private final SlewRateLimiter rotLimiter = new SlewRateLimiter(6.0);
 
     private static final double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(edu.wpi.first.units.Units.MetersPerSecond);
     private double MaxAngularRate = RotationsPerSecond.of(1.5).in(RadiansPerSecond);
@@ -85,10 +85,9 @@ public class RobotContainer {
                 double rawRot = -m_driverController.getRightX();
                 
                 // Apply deadband BEFORE the limiter
-                double deadband = 0.1;
-                rawX = Math.abs(rawX) > deadband ? rawX : 0.0;
-                rawY = Math.abs(rawY) > deadband ? rawY : 0.0;
-                rawRot = Math.abs(rawRot) > deadband ? rawRot : 0.0;
+                rawX = Math.abs(rawX) > OperatorConstants.deadband ? rawX : 0.0;
+                rawY = Math.abs(rawY) > OperatorConstants.deadband ? rawY : 0.0;
+                rawRot = Math.abs(rawRot) > OperatorConstants.deadband ? rawRot : 0.0;
                 
                 // Now apply slew rate limiting
                 double xSpeed = xLimiter.calculate(rawX);
