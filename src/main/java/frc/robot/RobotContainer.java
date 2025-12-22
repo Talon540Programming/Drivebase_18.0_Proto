@@ -14,7 +14,9 @@ import frc.robot.subsystems.Drive.SetReefCenterHeading;
 import frc.robot.subsystems.Drive.SetReefSideHeading;
 import frc.robot.subsystems.Vision.VisionBase;
 import frc.robot.subsystems.Vision.VisionIOLimelight;
+import edu.wpi.first.hal.SimDevice.Direction;
 import edu.wpi.first.math.filter.SlewRateLimiter;
+import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.ctre.phoenix6.swerve.SwerveRequest;
@@ -26,6 +28,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 
@@ -56,10 +59,11 @@ public class RobotContainer {
 
     private static final double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(edu.wpi.first.units.Units.MetersPerSecond);
     private double MaxAngularRate = RotationsPerSecond.of(1.5).in(RadiansPerSecond);
+
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
       .withDeadband(0)
       .withRotationalDeadband(MaxAngularRate * 0.1)
-      .withDriveRequestType(com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType.OpenLoopVoltage);
+      .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
   
     private final SwerveRequest.FieldCentricFacingAngle headingDrive = new SwerveRequest.FieldCentricFacingAngle()
       .withDeadband(0)
@@ -72,11 +76,49 @@ public class RobotContainer {
 
     /** The container for the robot. Contains subsystems, OI devices, and commands. */
     public RobotContainer() {
-        headingDrive.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
-        headingDrive.HeadingController.setPID(11, 0.1, 0.5);
 
         configureBindings();
         
+        autoChooser = AutoBuilder.buildAutoChooser("default auto"); //pick a default
+        SmartDashboard.putData("Auto Chooser", autoChooser);
+    }
+
+  
+    private void configureBindings() {
+        m_driverController.start().onTrue(Commands.runOnce(drivetrain::seedFieldCentric));
+        m_driverController.leftTrigger().whileTrue(drivetrain.applyRequest(() -> brake));
+
+        // Y button toggles face reef center - also disables auto heading if it's on
+        m_driverController.povRight().onTrue(Commands.runOnce(() -> {
+            if (autoHeading.isEnabled()) {
+                autoHeading.disableAutoHeading();
+            }
+            faceReefCenter.toggleFaceReef();
+        }));
+
+        // Update the existing povDown binding to also disable face reef
+        m_driverController.povDown().onTrue(Commands.runOnce(() -> {
+            if (faceReefCenter.isEnabled()) {
+                faceReefCenter.disableFaceReef();
+            }
+            autoHeading.toggleAutoHeading();
+        }));
+
+        m_driverController.povUp().whileTrue(
+            (driveToPose.createReefPathCommand(DriveToPose.Side.Middle).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
+
+        m_driverController.leftBumper().whileTrue(
+            (driveToPose.createReefPathCommand(DriveToPose.Side.Left).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
+
+        m_driverController.rightBumper().whileTrue(
+            (driveToPose.createReefPathCommand(DriveToPose.Side.Right).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
+
+        m_driverController.leftTrigger().whileTrue(
+            (driveToPose.createStationPathCommand().until(() -> driveToPose.haveStationConditionsChanged()).repeatedly()));
+
+        headingDrive.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
+        headingDrive.HeadingController.setPID(11, 0.1, 0.5);
+
         drivetrain.setDefaultCommand(
             drivetrain.run(() -> {
                 // Get raw joystick inputs
@@ -131,85 +173,20 @@ public class RobotContainer {
             })
         );
 
-        autoChooser = AutoBuilder.buildAutoChooser("default auto"); //pick a default
 
-        // Add SysId routines as auto options
-        autoChooser.addOption("SysId Translation Quasistatic Forward", 
-            drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-        autoChooser.addOption("SysId Translation Quasistatic Reverse", 
-            drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-        autoChooser.addOption("SysId Translation Dynamic Forward", 
-            drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward));
-        autoChooser.addOption("SysId Translation Dynamic Reverse", 
-            drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+        // Idle while the robot is disabled. This ensures the configured
+        // neutral mode is applied to the drive motors while disabled.
+        final var idle = new SwerveRequest.Idle();
+        RobotModeTriggers.disabled().whileTrue(
+            drivetrain.applyRequest(() -> idle).ignoringDisable(true)
+        );
 
-        // Steer SysId - need to switch routine first
-        autoChooser.addOption("SysId Steer Quasistatic Forward", 
-            Commands.runOnce(() -> drivetrain.useSysIdSteer())
-                .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward)));
-        autoChooser.addOption("SysId Steer Quasistatic Reverse", 
-            Commands.runOnce(() -> drivetrain.useSysIdSteer())
-                .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse)));
-        autoChooser.addOption("SysId Steer Dynamic Forward", 
-            Commands.runOnce(() -> drivetrain.useSysIdSteer())
-                .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward)));
-        autoChooser.addOption("SysId Steer Dynamic Reverse", 
-            Commands.runOnce(() -> drivetrain.useSysIdSteer())
-                .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse)));
-
-        // Rotation SysId
-        autoChooser.addOption("SysId Rotation Quasistatic Forward", 
-            Commands.runOnce(() -> drivetrain.useSysIdRotation())
-                .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward)));
-        autoChooser.addOption("SysId Rotation Quasistatic Reverse", 
-            Commands.runOnce(() -> drivetrain.useSysIdRotation())
-                .andThen(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse)));
-        autoChooser.addOption("SysId Rotation Dynamic Forward", 
-            Commands.runOnce(() -> drivetrain.useSysIdRotation())
-                .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward)));
-        autoChooser.addOption("SysId Rotation Dynamic Reverse", 
-            Commands.runOnce(() -> drivetrain.useSysIdRotation())
-                .andThen(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse)));
-
-
-        SmartDashboard.putData("Auto Chooser", autoChooser);
-    }
-
-  
-    private void configureBindings() {
-        m_driverController.start().onTrue(Commands.runOnce(drivetrain::seedFieldCentric));
-        m_driverController.b().whileTrue(drivetrain.applyRequest(() -> brake));
-
-        // Y button toggles face reef center - also disables auto heading if it's on
-        m_driverController.y().onTrue(Commands.runOnce(() -> {
-            if (autoHeading.isEnabled()) {
-                autoHeading.disableAutoHeading();
-            }
-            faceReefCenter.toggleFaceReef();
-        }));
-
-        // Update the existing povDown binding to also disable face reef
-        m_driverController.povDown().onTrue(Commands.runOnce(() -> {
-            if (faceReefCenter.isEnabled()) {
-                faceReefCenter.disableFaceReef();
-            }
-            autoHeading.toggleAutoHeading();
-        }));
-
-        m_driverController.povUp().whileTrue(
-            (driveToPose.createReefPathCommand(DriveToPose.Side.Middle).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
-
-        m_driverController.leftBumper().whileTrue(
-            (driveToPose.createReefPathCommand(DriveToPose.Side.Left).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
-
-        m_driverController.rightBumper().whileTrue(
-            (driveToPose.createReefPathCommand(DriveToPose.Side.Right).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
-
-        m_driverController.leftTrigger().whileTrue(
-            (driveToPose.createStationPathCommand().until(() -> driveToPose.haveStationConditionsChanged()).repeatedly()));
-
-            drivetrain.registerTelemetry(logger::telemeterize);
-
+        m_driverController.povLeft().and(m_driverController.a()).whileTrue(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+        m_driverController.povLeft().and(m_driverController.x()).whileTrue(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+        m_driverController.povLeft().and(m_driverController.y()).whileTrue(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward));
+        m_driverController.povLeft().and(m_driverController.b()).whileTrue(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+    
+        drivetrain.registerTelemetry(logger::telemeterize);
     }
 
     public Command getAutonomousCommand() {
