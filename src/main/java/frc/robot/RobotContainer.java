@@ -14,8 +14,8 @@ import frc.robot.subsystems.Drive.SetReefCenterHeading;
 import frc.robot.subsystems.Drive.SetReefSideHeading;
 import frc.robot.subsystems.Vision.VisionBase;
 import frc.robot.subsystems.Vision.VisionIOLimelight;
-import edu.wpi.first.hal.SimDevice.Direction;
 import edu.wpi.first.math.filter.SlewRateLimiter;
+
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 
 import com.pathplanner.lib.auto.AutoBuilder;
