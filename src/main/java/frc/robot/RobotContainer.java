@@ -29,7 +29,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 
@@ -89,39 +88,6 @@ public class RobotContainer {
         m_driverController.start().onTrue(Commands.runOnce(drivetrain::seedFieldCentric));
         m_driverController.leftTrigger().whileTrue(drivetrain.applyRequest(() -> brake));
 
-        /*
-        // Y button toggles face reef center - also disables auto heading if it's on
-        m_driverController.povRight().onTrue(Commands.runOnce(() -> {
-            if (autoHeading.isEnabled()) {
-                autoHeading.disableAutoHeading();
-            }
-            faceReefCenter.toggleFaceReef();
-        }));
-
-        // Update the existing povDown binding to also disable face reef
-        m_driverController.povDown().onTrue(Commands.runOnce(() -> {
-            if (faceReefCenter.isEnabled()) {
-                faceReefCenter.disableFaceReef();
-            }
-            autoHeading.toggleAutoHeading();
-        }));
-
-        
-        m_driverController.povUp().whileTrue(
-            (driveToPose.createReefPathCommand(DriveToPose.Side.Middle).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
-
-        m_driverController.leftBumper().whileTrue(
-            (driveToPose.createReefPathCommand(DriveToPose.Side.Left).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
-
-        m_driverController.rightBumper().whileTrue(
-            (driveToPose.createReefPathCommand(DriveToPose.Side.Right).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
-
-        m_driverController.leftTrigger().whileTrue(
-            (driveToPose.createStationPathCommand().until(() -> driveToPose.haveStationConditionsChanged()).repeatedly()));
-        */
-        headingDrive.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
-        headingDrive.HeadingController.setPID(11, 0.1, 0.5);
-
         drivetrain.setDefaultCommand(
             drivetrain.run(() -> {
                 // Get raw joystick inputs
@@ -174,14 +140,6 @@ public class RobotContainer {
                     );
                 }
             })
-        );
-
-
-        // Idle while the robot is disabled. This ensures the configured
-        // neutral mode is applied to the drive motors while disabled.
-        final var idle = new SwerveRequest.Idle();
-        RobotModeTriggers.disabled().whileTrue(
-            drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
 
         m_driverController.povLeft().and(m_driverController.a()).whileTrue(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward));

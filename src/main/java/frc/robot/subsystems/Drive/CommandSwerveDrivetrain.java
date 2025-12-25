@@ -112,7 +112,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         )
     );
 
-    /* The SysId routine to test */
+    /*
+    Change this bassed on what you are testing:
+    Translation: Drives (Forward; Backward)
+    Steer: Rotates wheels in place (Clockwise; Counterclockwise)
+    Rotation: Spins bot (Clockwise; Counterclockwise)
+    */
     private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineTranslation;
 
        /**
