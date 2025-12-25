@@ -15,6 +15,7 @@ import frc.robot.subsystems.Drive.SetReefSideHeading;
 import frc.robot.subsystems.Vision.VisionBase;
 import frc.robot.subsystems.Vision.VisionIOLimelight;
 import edu.wpi.first.math.filter.SlewRateLimiter;
+import com.ctre.phoenix6.SignalLogger;
 
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 
@@ -88,6 +89,7 @@ public class RobotContainer {
         m_driverController.start().onTrue(Commands.runOnce(drivetrain::seedFieldCentric));
         m_driverController.leftTrigger().whileTrue(drivetrain.applyRequest(() -> brake));
 
+        /*
         // Y button toggles face reef center - also disables auto heading if it's on
         m_driverController.povRight().onTrue(Commands.runOnce(() -> {
             if (autoHeading.isEnabled()) {
@@ -104,6 +106,7 @@ public class RobotContainer {
             autoHeading.toggleAutoHeading();
         }));
 
+        
         m_driverController.povUp().whileTrue(
             (driveToPose.createReefPathCommand(DriveToPose.Side.Middle).until(() -> driveToPose.haveReefConditionsChanged()).repeatedly()));
 
@@ -115,7 +118,7 @@ public class RobotContainer {
 
         m_driverController.leftTrigger().whileTrue(
             (driveToPose.createStationPathCommand().until(() -> driveToPose.haveStationConditionsChanged()).repeatedly()));
-
+        */
         headingDrive.HeadingController.enableContinuousInput(-Math.PI, Math.PI);
         headingDrive.HeadingController.setPID(11, 0.1, 0.5);
 
@@ -185,6 +188,13 @@ public class RobotContainer {
         m_driverController.povLeft().and(m_driverController.x()).whileTrue(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
         m_driverController.povLeft().and(m_driverController.y()).whileTrue(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward));
         m_driverController.povLeft().and(m_driverController.b()).whileTrue(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+        m_driverController.leftBumper().and(m_driverController.start()).onTrue(
+            Commands.runOnce(SignalLogger::start).ignoringDisable(true)
+        );
+        m_driverController.rightBumper().and(m_driverController.start()).onTrue(
+            Commands.runOnce(SignalLogger::stop).ignoringDisable(true)
+        );
     
         drivetrain.registerTelemetry(logger::telemeterize);
     }
