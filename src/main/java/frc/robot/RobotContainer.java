@@ -29,7 +29,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 
 /**
@@ -86,7 +85,7 @@ public class RobotContainer {
   
     private void configureBindings() {
         m_driverController.start().onTrue(Commands.runOnce(drivetrain::seedFieldCentric));
-        m_driverController.leftTrigger().whileTrue(drivetrain.applyRequest(() -> brake));
+        m_driverController.b().whileTrue(drivetrain.applyRequest(() -> brake));
 
         // Y button toggles face reef center - also disables auto heading if it's on
         m_driverController.povRight().onTrue(Commands.runOnce(() -> {
@@ -181,11 +180,6 @@ public class RobotContainer {
             drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
 
-        m_driverController.povLeft().and(m_driverController.a()).whileTrue(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-        m_driverController.povLeft().and(m_driverController.x()).whileTrue(drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-        m_driverController.povLeft().and(m_driverController.y()).whileTrue(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward));
-        m_driverController.povLeft().and(m_driverController.b()).whileTrue(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-    
         drivetrain.registerTelemetry(logger::telemeterize);
     }
 
