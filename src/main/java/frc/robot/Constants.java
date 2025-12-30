@@ -32,6 +32,8 @@ public final class Constants {
   public static final String kLimelightOne = "limelight-one";
   public static final String kLimelightTwo = "limelight-two";
 
+  public static final int PDHCanId = 1;
+
   public static enum Reef {
     left,
     right,

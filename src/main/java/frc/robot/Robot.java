@@ -11,6 +11,8 @@ import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 
 import edu.wpi.first.wpilibj.DataLogManager;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.PowerDistribution;
+import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 
@@ -23,7 +25,7 @@ public class Robot extends LoggedRobot {
   private Command m_autonomousCommand;
 
   private final RobotContainer m_robotContainer;
-
+  PowerDistribution pDHDistribution = new PowerDistribution(Constants.PDHCanId, ModuleType.kRev);
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -31,8 +33,10 @@ public class Robot extends LoggedRobot {
   public Robot() {
 
     DriverStation.silenceJoystickConnectionWarning(true);
-    // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
+    // Instantiate our RobotContainer.
     // autonomous chooser on the dashboard.
+    pDHDistribution.setSwitchableChannel(true);
+
     Logger.recordMetadata("ProjectName", "18.0_Swerve");
     Logger.addDataReceiver(new WPILOGWriter());  // Log to file
     Logger.addDataReceiver(new NT4Publisher());   // Live view
