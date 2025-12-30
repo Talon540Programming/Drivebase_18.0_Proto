@@ -52,9 +52,9 @@ public class RobotContainer {
     private final CommandXboxController m_driverController =
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
 
-    private final SlewRateLimiter xLimiter = new SlewRateLimiter(5.0);
-    private final SlewRateLimiter yLimiter = new SlewRateLimiter(5.0);
-    private final SlewRateLimiter rotLimiter = new SlewRateLimiter(5.0);
+    private final SlewRateLimiter xLimiter = new SlewRateLimiter(4.0);
+    private final SlewRateLimiter yLimiter = new SlewRateLimiter(4.0);
+    private final SlewRateLimiter rotLimiter = new SlewRateLimiter(4.0);
 
     private static final double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(edu.wpi.first.units.Units.MetersPerSecond);
     private double MaxAngularRate = RotationsPerSecond.of(1.5).in(RadiansPerSecond);
