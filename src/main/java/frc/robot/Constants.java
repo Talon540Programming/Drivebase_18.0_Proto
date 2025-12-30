@@ -108,4 +108,51 @@ public final class Constants {
     public static final double bumperWidth = -0.1;
 
   }
+
+  // This will be added to Constants.java
+
+  public static final class IntakeConstants {
+    // Motor IDs
+    public static final int kIntakeMotorID = 20; // PLACEHOLDER - update with actual CAN ID
+
+    // Sensor IDs
+    public static final int kIntakeSensorID = 30; // PLACEHOLDER - CANrange CAN ID
+    public static final int kIntakeBeambreakChannel = 0; // PLACEHOLDER - DIO channel for beambreak
+
+    // Sensor thresholds
+    public static final double kIntakeDetectionThresholdMeters = 0.1; // PLACEHOLDER - distance threshold for CANrange
+
+    // Motor speeds (duty cycle)
+    public static final double kIntakeSpeed = 0.8; // PLACEHOLDER - tune for your mechanism
+
+    // Simulation constants
+    public static final double kIntakeMOI = 0.001; // PLACEHOLDER - moment of inertia in kg*m^2
+    public static final double kIntakeGearRatio = 1.0; // PLACEHOLDER - gear ratio (motor rotations per roller rotation)
+  }
+
+  // ==================== OVER BUMPER CONSTANTS ====================
+// Add this inner class to Constants.java
+
+public static final class OverBumperConstants {
+  // Motor CAN IDs
+  public static final int kDeployMotorID = 21; // PLACEHOLDER - set to actual CAN ID
+  public static final int kRollerMotorID = 22; // PLACEHOLDER - set to actual CAN ID
+
+  // Deploy positions (in motor rotations after gear ratio)
+  public static final double kRetractedPosition = 0.0; // PLACEHOLDER - retracted/home position
+  public static final double kDeployedPosition = 2.5; // PLACEHOLDER - fully deployed position
+  public static final double kPositionTolerance = 0.05; // PLACEHOLDER - tolerance for position checks
+
+  // Roller speeds
+  public static final double kRollerIntakeVelocityRPS = 40.0; // PLACEHOLDER - rotations per second
+
+  // Simulation constants
+  public static final double kDeployGearRatio = 50.0; // PLACEHOLDER - deploy motor gear ratio
+  public static final double kDeployMOI = 0.5; // PLACEHOLDER - moment of inertia kg*m^2
+  public static final double kDeployArmLengthMeters = 0.3; // PLACEHOLDER - effective arm length
+  
+  public static final double kRollerGearRatio = 2.0; // PLACEHOLDER - roller gear ratio
+  public static final double kRollerMOI = 0.001; // PLACEHOLDER - roller moment of inertia kg*m^2
+}
+
 }
