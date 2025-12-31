@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 
 import com.ctre.phoenix6.Utils;
 
+
 import org.littletonrobotics.junction.Logger;
 
 
@@ -63,17 +64,19 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      * @param drivetrainConstants   Drivetrain-wide constants for the swerve drive
      * @param modules               Constants for each specific module
      */
-    public CommandSwerveDrivetrain(
+        public CommandSwerveDrivetrain(
         SwerveDrivetrainConstants drivetrainConstants,
         SwerveModuleConstants<?, ?, ?>... modules
     ) {
         super(drivetrainConstants, modules);
+        
         if (Utils.isSimulation()) {
             startSimThread();
         }
         configureAutoBuilder();
     }
 
+    
     /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
      * <p>
@@ -176,13 +179,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     @Override
     public void periodic() {
-        /*
-         * Periodically try to apply the operator perspective.
-         * If we haven't applied the operator perspective before, then we should apply it regardless of DS state.
-         * This allows us to correct the perspective in case the robot code restarts mid-match.
-         * Otherwise, only check and apply the operator perspective if the DS is disabled.
-         * This ensures driving behavior doesn't change until an explicit disable event occurs during testing.
-         */
         if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
             DriverStation.getAlliance().ifPresent(allianceColor -> {
                 setOperatorPerspectiveForward(
@@ -242,19 +238,28 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      * Resets the field-centric heading to the current heading.
      * This is useful for resetting the zero point of the gyro.
      */
+    /* 
     public void seedFieldCentric() {
         resetRotation(new Rotation2d());
     }
-    /* 
-    public void seedFieldCentric() {
-        var alliance = DriverStation.getAlliance();
-        if (alliance.isPresent() && alliance.get() == Alliance.Red) {
-            resetRotation(Rotation2d.k180deg);
-        } else {
-            resetRotation(new Rotation2d());
-        }
+  */
+  public void seedFieldCentric() {
+    var alliance = DriverStation.getAlliance();
+    System.out.println("Alliance: " + alliance);
+    System.out.println("Raw Pigeon yaw BEFORE seed: " + getPigeon2().getYaw().getValueAsDouble());
+    System.out.println("Pose rotation BEFORE seed: " + getPose().getRotation().getDegrees());
+    
+    if (alliance.isPresent() && alliance.get() == Alliance.Red) {
+        System.out.println("Seeding to 180 degrees");
+        resetRotation(Rotation2d.k180deg);
+    } else {
+        System.out.println("Seeding to 0 degrees");
+        resetRotation(new Rotation2d());
     }
-    */
+    
+    System.out.println("Raw Pigeon yaw AFTER seed: " + getPigeon2().getYaw().getValueAsDouble());
+    System.out.println("Pose rotation AFTER seed: " + getPose().getRotation().getDegrees());
+}
     /**
  * Adds a vision measurement to the Kalman Filter. This will correct the odometry pose estimate
  * while still accounting for measurement noise.
