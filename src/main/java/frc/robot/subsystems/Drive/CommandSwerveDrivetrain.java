@@ -46,7 +46,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
     private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.kZero;
     /* Red alliance sees forward as 180 degrees (toward blue alliance wall) */
-    private static final Rotation2d kRedAlliancePerspectiveRotation = Rotation2d.k180deg;
+    private static final Rotation2d kRedAlliancePerspectiveRotation = Rotation2d.kZero;
 
     private boolean m_hasAppliedOperatorPerspective = false;
 
@@ -243,7 +243,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      * This is useful for resetting the zero point of the gyro.
      */
     public void seedFieldCentric() {
-        resetRotation(new Rotation2d());
+        var alliance = DriverStation.getAlliance();
+        if (alliance.isPresent() && alliance.get() == Alliance.Red) {
+            resetRotation(Rotation2d.k180deg);
+        } else {
+            resetRotation(new Rotation2d());
+        }
     }
 
     /**
