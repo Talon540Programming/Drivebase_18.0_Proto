@@ -25,7 +25,7 @@ public class VisionBase extends SubsystemBase{
 
     @Override
     public void periodic() {
-        vision.updateLimelightYaw(drivetrain);
+      //  vision.updateLimelightYaw(drivetrain);
         vision.updateVisionIOInputs(limelightOne, limelightTwo);
 
         // Process both cameras
@@ -73,8 +73,8 @@ public class VisionBase extends SubsystemBase{
 
     private Matrix<N3, N1> calculateStdDevs(VisionIOInputs input) {
     // Base standard deviations (in meters for x/y, radians for rotation)
-    double xyStdDev = 0.5;  // Start somewhat untrusting
-    double rotStdDev = 0.5;
+    double xyStdDev = 0.8;  // Start somewhat untrusting
+    double rotStdDev = 0.8;
     
     // More tags = more confidence
     if (input.seenTagCount >= 2) {
