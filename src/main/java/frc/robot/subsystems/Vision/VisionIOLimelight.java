@@ -54,8 +54,6 @@ public class VisionIOLimelight implements VisionIO {
         // But we need to verify this is what the Limelight expects
         double yaw = drivetrain.getPose().getRotation().getDegrees();
         
-        System.out.println("Pose yaw being sent: " + yaw);
-        
         LimelightHelpers.SetRobotOrientation(limelightOne, yaw, 0, 0, 0, 0, 0);
         LimelightHelpers.SetRobotOrientation(limelightTwo, yaw, 0, 0, 0, 0, 0);
     }
