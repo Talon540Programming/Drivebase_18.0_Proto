@@ -11,8 +11,8 @@ public class VisionIOLimelight implements VisionIO {
 
     public VisionIOLimelight(){
         //sets mode for Metatag 2 and mode 0 uses robot gyro for orentation 
-        LimelightHelpers.SetIMUMode(limelightOne, 1);
-        LimelightHelpers.SetIMUMode(limelightTwo, 1);
+        LimelightHelpers.SetIMUMode(limelightOne, 0);
+        LimelightHelpers.SetIMUMode(limelightTwo, 0);
 
 
     }

@@ -243,6 +243,10 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      * This is useful for resetting the zero point of the gyro.
      */
     public void seedFieldCentric() {
+        resetRotation(new Rotation2d());
+    }
+    /* 
+    public void seedFieldCentric() {
         var alliance = DriverStation.getAlliance();
         if (alliance.isPresent() && alliance.get() == Alliance.Red) {
             resetRotation(Rotation2d.k180deg);
@@ -250,7 +254,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             resetRotation(new Rotation2d());
         }
     }
-
+    */
     /**
  * Adds a vision measurement to the Kalman Filter. This will correct the odometry pose estimate
  * while still accounting for measurement noise.

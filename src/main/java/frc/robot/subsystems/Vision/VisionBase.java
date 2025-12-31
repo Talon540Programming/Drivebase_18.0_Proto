@@ -25,7 +25,7 @@ public class VisionBase extends SubsystemBase{
 
     @Override
     public void periodic() {
-      //  vision.updateLimelightYaw(drivetrain);
+        vision.updateLimelightYaw(drivetrain);
         vision.updateVisionIOInputs(limelightOne, limelightTwo);
 
         // Process both cameras
