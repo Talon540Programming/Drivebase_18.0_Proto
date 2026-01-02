@@ -190,8 +190,4 @@ public class RobotContainer {
         return autoChooser.getSelected();
     }
 
-    public void resetVisionGyroInit() {
-        vision.resetGyroInitialization();
-    }
-
 }

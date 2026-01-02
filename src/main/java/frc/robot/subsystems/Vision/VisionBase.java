@@ -38,7 +38,7 @@ public class VisionBase extends SubsystemBase{
         }
         
         // Only send yaw to Limelight for MT2 after we have a valid orientation
-        if (hasInitializedGyro) {
+        if (hasInitializedGyro && !DriverStation.isDisabled()) {
             vision.updateLimelightYaw(drivetrain);
         }
         
@@ -129,7 +129,7 @@ public class VisionBase extends SubsystemBase{
 
             boolean trustworthy = 
                 (mt1Estimate.tagCount >= 2 && mt1Estimate.avgTagDist < 4.0) ||
-                (mt1Estimate.tagCount == 1 && mt1Estimate.avgTagDist < 2.0);
+                (mt1Estimate.tagCount == 1 && mt1Estimate.avgTagDist < 1.5);
 
             if (trustworthy) {
                 Rotation2d visionYaw = mt1Estimate.pose.getRotation();
@@ -139,6 +139,7 @@ public class VisionBase extends SubsystemBase{
                 Logger.recordOutput("Vision/InitialYaw", visionYaw.getDegrees());
                 Logger.recordOutput("Vision/InitTagCount", mt1Estimate.tagCount);
                 Logger.recordOutput("Vision/InitAvgDist", mt1Estimate.avgTagDist);
+                return;
             }
         }
     }
@@ -146,14 +147,6 @@ public class VisionBase extends SubsystemBase{
     public void setGyroInitialized() {
         hasInitializedGyro = true;
         Logger.recordOutput("Vision/GyroManualOverride", true);
-    }
-
-    public void resetGyroInitialization() {
-        hasInitializedGyro = false;
-    }
-    
-    public boolean hasInitializedGyro() {
-        return hasInitializedGyro;
     }
     
     public VisionIOInputs getVisionIOInputsOne() {
