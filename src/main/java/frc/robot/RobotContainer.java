@@ -84,7 +84,10 @@ public class RobotContainer {
 
   
     private void configureBindings() {
-        m_driverController.start().onTrue(Commands.runOnce(drivetrain::seedFieldCentric));
+        m_driverController.start().onTrue(Commands.runOnce(()->{
+            drivetrain.seedFieldCentric();
+            vision.setGyroInitialized();
+        }));
         m_driverController.b().whileTrue(drivetrain.applyRequest(() -> brake));
 
         // Y button toggles face reef center - also disables auto heading if it's on
@@ -185,6 +188,10 @@ public class RobotContainer {
 
     public Command getAutonomousCommand() {
         return autoChooser.getSelected();
+    }
+
+    public void resetVisionGyroInit() {
+        vision.resetGyroInitialization();
     }
 
 }

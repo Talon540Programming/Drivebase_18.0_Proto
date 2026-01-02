@@ -3,10 +3,15 @@ package frc.robot.subsystems.Vision;
 import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.math.Matrix;
+import java.util.ArrayList;
 import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants;
+import frc.robot.Util.LimelightHelpers;
 import frc.robot.subsystems.Drive.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Vision.VisionIO.VisionIOInputs;
 
@@ -16,6 +21,7 @@ public class VisionBase extends SubsystemBase{
     private final VisionIOInputs limelightOne = new VisionIOInputs();
     private final VisionIOInputs limelightTwo = new VisionIOInputs();
     private final CommandSwerveDrivetrain drivetrain;
+    private boolean hasInitializedGyro = false;
 
 
     public VisionBase(VisionIO vision, CommandSwerveDrivetrain drivetrain) {
@@ -25,8 +31,17 @@ public class VisionBase extends SubsystemBase{
 
     @Override
     public void periodic() {
+        // While disabled, continuously update gyro from vision (unless manually seeded)
+        // Once enabled, stop auto-updating so we don't fight the Pigeon
+        if (DriverStation.isDisabled()) {
+            tryInitializeGyroFromVision(drivetrain);
+        }
         
-        vision.updateLimelightYaw(drivetrain);
+        // Only send yaw to Limelight for MT2 after we have a valid orientation
+        if (hasInitializedGyro) {
+            vision.updateLimelightYaw(drivetrain);
+        }
+        
         vision.updateVisionIOInputs(limelightOne, limelightTwo);
 
         // Process both cameras
@@ -73,24 +88,74 @@ public class VisionBase extends SubsystemBase{
     }
 
     private Matrix<N3, N1> calculateStdDevs(VisionIOInputs input) {
-    // Base standard deviations (in meters for x/y, radians for rotation)
-    double xyStdDev = 2;  // Start somewhat untrusting
-    double rotStdDev = 2;
-    
-    // More tags = more confidence
-    if (input.seenTagCount >= 2) {
-        xyStdDev = 1;
-        rotStdDev = 1;
-    }
-    
-    if (input.avgTagDistance > 4.0) {
-        xyStdDev *= 2.0;
-        rotStdDev *= 2.0;
-    }
-    
-    return VecBuilder.fill(xyStdDev, xyStdDev, rotStdDev);
+        double xyStdDev = 0.5;  // Base trust
+        double rotStdDev = 0.5;
+        
+        // More tags = more confidence
+        if (input.seenTagCount == 1) {
+            xyStdDev = 1.0;
+            rotStdDev = 2.0;  // Single tag rotation is less reliable
+        }
+        
+        // Scale trust by distance (exponential falloff)
+        double distanceMultiplier = 1.0 + (input.avgTagDistance * input.avgTagDistance * 0.1);
+        xyStdDev *= distanceMultiplier;
+        rotStdDev *= distanceMultiplier;
+        
+        // Hard limits - don't trust too much or reject entirely
+        xyStdDev = Math.max(0.3, Math.min(xyStdDev, 5.0));
+        rotStdDev = Math.max(0.5, Math.min(rotStdDev, 10.0));
+        
+        return VecBuilder.fill(xyStdDev, xyStdDev, rotStdDev);
     }
 
+    public void tryInitializeGyroFromVision(CommandSwerveDrivetrain drivetrain) {
+
+        LimelightHelpers.PoseEstimate mt1EstimateCameraOne = 
+            LimelightHelpers.getBotPoseEstimate_wpiBlue(Constants.kLimelightOne);
+
+        LimelightHelpers.PoseEstimate mt1EstimateCameraTwo = 
+            LimelightHelpers.getBotPoseEstimate_wpiBlue(Constants.kLimelightTwo);
+
+        ArrayList<LimelightHelpers.PoseEstimate> poseList = new ArrayList<>();
+
+        poseList.add(mt1EstimateCameraOne);
+        poseList.add(mt1EstimateCameraTwo);
+        
+        for(LimelightHelpers.PoseEstimate mt1Estimate : poseList){
+            if (mt1Estimate == null || mt1Estimate.tagCount == 0) {
+               continue;
+            }
+
+            boolean trustworthy = 
+                (mt1Estimate.tagCount >= 2 && mt1Estimate.avgTagDist < 4.0) ||
+                (mt1Estimate.tagCount == 1 && mt1Estimate.avgTagDist < 2.0);
+
+            if (trustworthy) {
+                Rotation2d visionYaw = mt1Estimate.pose.getRotation();
+                drivetrain.resetRotation(visionYaw);
+                hasInitializedGyro = true;
+                Logger.recordOutput("Vision/GyroInitializedFromVision", true);
+                Logger.recordOutput("Vision/InitialYaw", visionYaw.getDegrees());
+                Logger.recordOutput("Vision/InitTagCount", mt1Estimate.tagCount);
+                Logger.recordOutput("Vision/InitAvgDist", mt1Estimate.avgTagDist);
+            }
+        }
+    }
+
+    public void setGyroInitialized() {
+        hasInitializedGyro = true;
+        Logger.recordOutput("Vision/GyroManualOverride", true);
+    }
+
+    public void resetGyroInitialization() {
+        hasInitializedGyro = false;
+    }
+    
+    public boolean hasInitializedGyro() {
+        return hasInitializedGyro;
+    }
+    
     public VisionIOInputs getVisionIOInputsOne() {
         return limelightOne;
     }
