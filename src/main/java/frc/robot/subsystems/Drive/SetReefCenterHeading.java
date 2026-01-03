@@ -14,18 +14,24 @@ public class SetReefCenterHeading{
     
     private boolean faceReefEnabled = false;
     private Rotation2d targetHeading = new Rotation2d();
+    private Pose2d lastUpdatePose = new Pose2d();
+    private static final double UPDATE_DISTANCE_THRESHOLD = 0.1;
 
     public SetReefCenterHeading(VisionBase vision) {
         this.vision = vision;
     }
 
-    public void toggleFaceReef() {
-        faceReefEnabled = !faceReefEnabled;
-        Logger.recordOutput("FaceReefCenter/Enabled", faceReefEnabled);
-    }
-
     public void enableFaceReef() {
         faceReefEnabled = true;
+        lastUpdatePose = new Pose2d();  // Reset so heading calculates immediately
+        Logger.recordOutput("FaceReefCenter/Enabled", faceReefEnabled);
+    }
+    
+    public void toggleFaceReef() {
+        faceReefEnabled = !faceReefEnabled;
+        if (faceReefEnabled) {
+            lastUpdatePose = new Pose2d();  // Reset so heading calculates immediately
+        }
         Logger.recordOutput("FaceReefCenter/Enabled", faceReefEnabled);
     }
 
@@ -45,18 +51,22 @@ public class SetReefCenterHeading{
      * @param currentPose The current pose of the robot
      */
     public void updateTargetHeading(Pose2d currentPose) {
-        // Get the appropriate reef center based on alliance
+        // Only recalculate if robot has moved significantly
+        if (currentPose.getTranslation().getDistance(lastUpdatePose.getTranslation()) < UPDATE_DISTANCE_THRESHOLD) {
+            return;  // Keep using the existing targetHeading
+        }
+        
+        lastUpdatePose = currentPose;
+        
         Pose2d reefCenter = vision.isRedAlliance() 
             ? FieldPoses.redCenterOfReef 
             : FieldPoses.blueCenterOfReef;
-
-        // Calculate the angle from robot to reef center
+    
         double dx = reefCenter.getX() - currentPose.getX();
         double dy = reefCenter.getY() - currentPose.getY();
         
-        // atan2 gives us the angle pointing toward the reef center
-        targetHeading = new Rotation2d((Math.atan2(dy, dx)));
-
+        targetHeading = new Rotation2d(Math.atan2(dy, dx)).plus(Rotation2d.k180deg);
+    
         Logger.recordOutput("FaceReefCenter/TargetHeading", targetHeading.getDegrees());
         Logger.recordOutput("FaceReefCenter/ReefCenter", reefCenter);
     }

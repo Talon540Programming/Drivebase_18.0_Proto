@@ -46,7 +46,7 @@ public class SetReefSideHeading{
             vision.isRedAlliance() ? FieldPoses.redReefPoses : FieldPoses.blueReefPoses
         );
 
-        targetHeading = nearestReefFace.getRotation();
+        targetHeading = nearestReefFace.getRotation().plus(Rotation2d.k180deg);
 
         Logger.recordOutput("AutoHeading/TargetHeading", targetHeading.getDegrees());
         Logger.recordOutput("AutoHeading/NearestReefFace", nearestReefFace);

@@ -175,7 +175,7 @@ public class DriveToPose{
             nearestReefSide = calculateNearestReefSide();
             Pose2d align = calculateReefPath(side, nearestReefSide);
             
-            if(isAtTargetPose(align, 0.08)){
+            if(isAtTargetPose(align, 0.05)){
                 return Commands.none();
             }
 
