@@ -245,20 +245,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
   */
   public void seedFieldCentric() {
     var alliance = DriverStation.getAlliance();
-    System.out.println("Alliance: " + alliance);
-    System.out.println("Raw Pigeon yaw BEFORE seed: " + getPigeon2().getYaw().getValueAsDouble());
-    System.out.println("Pose rotation BEFORE seed: " + getPose().getRotation().getDegrees());
     
     if (alliance.isPresent() && alliance.get() == Alliance.Red) {
-        System.out.println("Seeding to 180 degrees");
         resetRotation(Rotation2d.k180deg);
     } else {
-        System.out.println("Seeding to 0 degrees");
         resetRotation(new Rotation2d());
     }
-    
-    System.out.println("Raw Pigeon yaw AFTER seed: " + getPigeon2().getYaw().getValueAsDouble());
-    System.out.println("Pose rotation AFTER seed: " + getPose().getRotation().getDegrees());
 }
     /**
  * Adds a vision measurement to the Kalman Filter. This will correct the odometry pose estimate
