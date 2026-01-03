@@ -38,7 +38,7 @@ public class VisionBase extends SubsystemBase{
         }
         
         // Only send yaw to Limelight for MT2 after we have a valid orientation
-        if (hasInitializedGyro && !DriverStation.isDisabled()) {
+        if (hasInitializedGyro) {
             vision.updateLimelightYaw(drivetrain);
         }
         
