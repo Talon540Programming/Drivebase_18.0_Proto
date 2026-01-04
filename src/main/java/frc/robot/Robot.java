@@ -25,7 +25,7 @@ public class Robot extends LoggedRobot {
   private Command m_autonomousCommand;
 
   private final RobotContainer m_robotContainer;
-  PowerDistribution pDHDistribution = new PowerDistribution(Constants.PDHCanId, ModuleType.kRev);
+  private final PowerDistribution pDHDistribution = new PowerDistribution(Constants.PDHCanId, ModuleType.kRev);
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.

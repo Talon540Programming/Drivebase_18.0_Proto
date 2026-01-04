@@ -243,6 +243,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         resetRotation(new Rotation2d());
     }
   */
+  //this is so 0 is now facing the opposite alliance station revert to above code for default control 
   public void seedFieldCentric() {
     var alliance = DriverStation.getAlliance();
     
