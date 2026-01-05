@@ -7,25 +7,25 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Test Path Start"
+            "pathName": "Square Rotating Line 1"
           }
         },
         {
           "type": "path",
           "data": {
-            "pathName": "Square Line 2"
+            "pathName": "Square Rotationg Line 2"
           }
         },
         {
           "type": "path",
           "data": {
-            "pathName": "Square Line 3"
+            "pathName": "Square Roating Line 3"
           }
         },
         {
           "type": "path",
           "data": {
-            "pathName": "Square Line 4"
+            "pathName": "Square Rotating Line 4"
           }
         }
       ]
