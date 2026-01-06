@@ -150,10 +150,16 @@ public class RobotContainer {
         (m_driverController.b()).whileTrue(drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse));
 
         m_driverController.leftBumper().onTrue(
-            Commands.runOnce(SignalLogger::start).ignoringDisable(true)
+            Commands.runOnce(() -> {
+                SignalLogger.start();
+                System.out.println("SignalLogger STARTED");
+            }).ignoringDisable(true)
         );
         m_driverController.rightBumper().onTrue(
-            Commands.runOnce(SignalLogger::stop).ignoringDisable(true)
+            Commands.runOnce(() -> {
+                SignalLogger.stop();
+                System.out.println("SignalLogger STOPPED");
+            }).ignoringDisable(true)
         );
     
         drivetrain.registerTelemetry(logger::telemeterize);

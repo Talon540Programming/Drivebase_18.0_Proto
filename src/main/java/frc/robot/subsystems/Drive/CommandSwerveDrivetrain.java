@@ -8,6 +8,7 @@ import static edu.wpi.first.units.Units.*;
 
 import java.util.function.Supplier;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.Utils;
 
 import org.littletonrobotics.junction.Logger;
@@ -66,7 +67,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             Volts.of(4), // Reduce dynamic step voltage to 4 V to prevent brownout
             null,        // Use default timeout (10 s)
             // Log state with AdvantageKit
-            state -> Logger.recordOutput("SysIdTranslation_State", state.toString())
+            (state) -> SignalLogger.writeString("state", state.toString())
         ),
         new SysIdRoutine.Mechanism(
             output -> setControl(m_translationCharacterization.withVolts(output)),
@@ -82,7 +83,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             Volts.of(7), // Use dynamic voltage of 7 V
             null,        // Use default timeout (10 s)
             // Log state with AdvantageKit
-            state -> Logger.recordOutput("SysIdSteer_State", state.toString())
+            (state) -> SignalLogger.writeString("state", state.toString())
         ),
         new SysIdRoutine.Mechanism(
             volts -> setControl(m_steerCharacterization.withVolts(volts)),
@@ -100,7 +101,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             Volts.of(Math.PI),
             null, // Use default timeout (10 s)
             // Log state with AdvantageKit
-            state -> Logger.recordOutput("SysIdRotation_State", state.toString())
+            (state) -> SignalLogger.writeString("state", state.toString())
         ),
         new SysIdRoutine.Mechanism(
             output -> {
@@ -118,7 +119,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     Steer: Rotates wheels in place (Clockwise; Counterclockwise)
     Rotation: Spins bot (Clockwise; Counterclockwise)
     */
-    private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineTranslation;
+    private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineSteer;
 
        /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
