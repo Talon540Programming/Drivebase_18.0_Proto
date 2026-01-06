@@ -22,6 +22,7 @@ public class VisionBase extends SubsystemBase{
     private final VisionIOInputs limelightTwo = new VisionIOInputs();
     private final CommandSwerveDrivetrain drivetrain;
     private boolean hasInitializedGyro = false;
+    private boolean trustworthy;
 
 
     public VisionBase(VisionIO vision, CommandSwerveDrivetrain drivetrain) {
@@ -32,7 +33,7 @@ public class VisionBase extends SubsystemBase{
     @Override
     public void periodic() {
 
-        if (DriverStation.isDisabled() || DriverStation.isEnabled()) {
+        if ((DriverStation.isDisabled() || DriverStation.isEnabled()) && !hasInitializedGyro) {
             setYawWithCameras(drivetrain);
         }
         
@@ -115,7 +116,10 @@ public class VisionBase extends SubsystemBase{
         
         return VecBuilder.fill(xyStdDev, xyStdDev, rotStdDev);
     }
-
+    /*
+     * Prematch sets yaw with MT1 with higher tollerance then turns on metatag 2
+     * once gyro has been init then only check for gyro with cameras if very confident
+     */
     public void setYawWithCameras(CommandSwerveDrivetrain drivetrain) {
 
         LimelightHelpers.PoseEstimate mt1EstimateCameraOne = 
@@ -138,9 +142,16 @@ public class VisionBase extends SubsystemBase{
                 continue;
             }
 
-            boolean trustworthy = 
-                (mt1Estimate.tagCount >= 2 && mt1Estimate.avgTagDist < 4.0) ||
-                (mt1Estimate.tagCount == 1 && mt1Estimate.avgTagDist < 1.5);
+            if(!hasInitializedGyro){
+                trustworthy = 
+                    (mt1Estimate.tagCount >= 2 && mt1Estimate.avgTagDist < 4.0) ||
+                    (mt1Estimate.tagCount == 1 && mt1Estimate.avgTagDist < 1.5);
+            }
+            else{
+                trustworthy = 
+                (mt1Estimate.tagCount >= 2 && mt1Estimate.avgTagDist < 2.0) ||
+                (mt1Estimate.tagCount == 1 && mt1Estimate.avgTagDist < 0.5);
+            }
 
             if (trustworthy) {
                 Rotation2d visionYaw = mt1Estimate.pose.getRotation();
