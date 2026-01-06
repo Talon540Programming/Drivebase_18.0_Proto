@@ -31,10 +31,9 @@ public class VisionBase extends SubsystemBase{
 
     @Override
     public void periodic() {
-        // While disabled, continuously update gyro from vision (unless manually seeded)
-        // Once enabled, stop auto-updating so we don't fight the Pigeon
-        if (DriverStation.isDisabled()) {
-            tryInitializeGyroFromVision(drivetrain);
+
+        if (DriverStation.isDisabled() || DriverStation.isEnabled()) {
+            setYawWithCameras(drivetrain);
         }
         
         // Only send yaw to Limelight for MT2 after we have a valid orientation
@@ -42,9 +41,10 @@ public class VisionBase extends SubsystemBase{
             vision.updateLimelightYaw(drivetrain);
         }
         
+        //updating IO layer inputs from vision
         vision.updateVisionIOInputs(limelightOne, limelightTwo);
 
-        // Process both cameras
+        // Process both cameras and apply given the standard deviations calcualted
         processVisionMeasurement(limelightOne);
         processVisionMeasurement(limelightTwo);
 
@@ -52,6 +52,13 @@ public class VisionBase extends SubsystemBase{
         Logger.recordOutput("Vision/EstimatedPoseTwo", limelightTwo.pose);
     }
 
+    /*
+     * calcualtes the bot pose in field space from each of the limelights
+     * for each camera, a specific set of standard deviations are created and applied to that measurement
+     * If the calculated position is too far away from the current pose and the camera is not confident the pose is rejected
+     * The decrease in confidence scales exponentially with tag distance so that poor measurments will be weighted less
+     * If the bot is spinning at a rate greater then 1/2 tau/sec then the pose is rejected 
+     */
     private void processVisionMeasurement(VisionIOInputs input) {
         if (input.seenTagCount <= 0 || !input.hasTarget) {
             return;
@@ -109,7 +116,7 @@ public class VisionBase extends SubsystemBase{
         return VecBuilder.fill(xyStdDev, xyStdDev, rotStdDev);
     }
 
-    public void tryInitializeGyroFromVision(CommandSwerveDrivetrain drivetrain) {
+    public void setYawWithCameras(CommandSwerveDrivetrain drivetrain) {
 
         LimelightHelpers.PoseEstimate mt1EstimateCameraOne = 
             LimelightHelpers.getBotPoseEstimate_wpiBlue(Constants.kLimelightOne);
@@ -124,7 +131,11 @@ public class VisionBase extends SubsystemBase{
         
         for(LimelightHelpers.PoseEstimate mt1Estimate : poseList){
             if (mt1Estimate == null || mt1Estimate.tagCount == 0) {
-               continue;
+                continue;
+            }
+
+            if (Math.abs(drivetrain.getFieldVelocity().omegaRadiansPerSecond) > Math.toRadians(180)){
+                continue;
             }
 
             boolean trustworthy = 
