@@ -186,6 +186,22 @@ public class RobotContainer {
         drivetrain.registerTelemetry(logger::telemeterize);
     }
 
+    /*
+     * Final check for gyro initialization at teleop start.
+     * If gyro hasn't been initialized, try one last time from cameras.
+     * If cameras don't see anything, zero the gyro normally.
+    */
+    public void finalGyroCheck() {
+        if (!vision.isGyroInitialized()) {
+            boolean success = vision.forceSetYawFromCameras(drivetrain);
+            if (!success) {
+                // No cameras saw tags, zero normally
+                drivetrain.seedFieldCentric();
+                vision.setGyroInitialized();
+            }
+        }
+    }
+
     public Command getAutonomousCommand() {
         return autoChooser.getSelected();
     }

@@ -195,4 +195,51 @@ public class VisionBase extends SubsystemBase{
         // Both should have the same value, just pick one
         return limelightOne.isRedAlliance;
     }    
+
+ /**
+ * Final attempt to set yaw from cameras before teleop, regardless of trustworthiness.
+ * Only used if gyro hasn't been initialized yet.
+ * @return true if a pose was found and applied, false if no cameras saw tags
+ */
+public boolean forceSetYawFromCameras(CommandSwerveDrivetrain drivetrain) {
+    if (hasInitializedGyro) {
+        return true; // Already initialized, no need to force
+    }
+
+    LimelightHelpers.PoseEstimate mt1EstimateCameraOne = 
+        LimelightHelpers.getBotPoseEstimate_wpiBlue(Constants.kLimelightOne);
+
+    LimelightHelpers.PoseEstimate mt1EstimateCameraTwo = 
+        LimelightHelpers.getBotPoseEstimate_wpiBlue(Constants.kLimelightTwo);
+
+    // Try camera one first
+    if (mt1EstimateCameraOne != null && mt1EstimateCameraOne.tagCount > 0) {
+        Rotation2d visionYaw = mt1EstimateCameraOne.pose.getRotation();
+        drivetrain.resetRotation(visionYaw);
+        hasInitializedGyro = true;
+        Logger.recordOutput("Vision/GyroForcedFromVision", true);
+        Logger.recordOutput("Vision/ForcedYaw", visionYaw.getDegrees());
+        Logger.recordOutput("Vision/ForcedFromCamera", "One");
+        return true;
+    }
+
+    // Fall back to camera two
+    if (mt1EstimateCameraTwo != null && mt1EstimateCameraTwo.tagCount > 0) {
+        Rotation2d visionYaw = mt1EstimateCameraTwo.pose.getRotation();
+        drivetrain.resetRotation(visionYaw);
+        hasInitializedGyro = true;
+        Logger.recordOutput("Vision/GyroForcedFromVision", true);
+        Logger.recordOutput("Vision/ForcedYaw", visionYaw.getDegrees());
+        Logger.recordOutput("Vision/ForcedFromCamera", "Two");
+        return true;
+    }
+
+    // No cameras saw any tags
+    Logger.recordOutput("Vision/GyroForceAttemptFailed", true);
+    return false;
+}
+
+public boolean isGyroInitialized() {
+    return hasInitializedGyro;
+}
 }
