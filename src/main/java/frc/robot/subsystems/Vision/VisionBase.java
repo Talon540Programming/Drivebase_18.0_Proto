@@ -22,7 +22,8 @@ public class VisionBase extends SubsystemBase{
     private final VisionIOInputs limelightTwo = new VisionIOInputs();
     private final CommandSwerveDrivetrain drivetrain;
     private boolean hasInitializedGyro = false;
-    private boolean trustworthy;
+    private int setYawTagCount = 0;
+    private double setYawTagDistance = 0;
 
 
     public VisionBase(VisionIO vision, CommandSwerveDrivetrain drivetrain) {
@@ -33,7 +34,7 @@ public class VisionBase extends SubsystemBase{
     @Override
     public void periodic() {
 
-        if ((DriverStation.isDisabled() || DriverStation.isEnabled()) && !hasInitializedGyro) {
+        if(DriverStation.isDisabled()){
             setYawWithCameras(drivetrain);
         }
         
@@ -136,17 +137,24 @@ public class VisionBase extends SubsystemBase{
                 continue;
             }
 
-            if (Math.abs(drivetrain.getFieldVelocity().omegaRadiansPerSecond) > Math.toRadians(180)){
-                continue;
-            }
+            if(!hasInitializedGyro){
                 Rotation2d visionYaw = mt1Estimate.pose.getRotation();
                 drivetrain.resetRotation(visionYaw);
                 hasInitializedGyro = true;
+                setYawTagCount = mt1Estimate.tagCount;
+                setYawTagDistance = mt1Estimate.avgTagDist;
                 Logger.recordOutput("Vision/GyroInitializedFromVision", true);
                 Logger.recordOutput("Vision/InitialYaw", visionYaw.getDegrees());
                 Logger.recordOutput("Vision/InitTagCount", mt1Estimate.tagCount);
                 Logger.recordOutput("Vision/InitAvgDist", mt1Estimate.avgTagDist);
                 return;
+            }
+            else{
+                if(mt1Estimate.tagCount >= setYawTagCount || mt1Estimate.avgTagDist <= setYawTagDistance){
+                    Rotation2d visionYaw = mt1Estimate.pose.getRotation();
+                    drivetrain.resetRotation(visionYaw);
+                }
+            }
         }
     }
 
