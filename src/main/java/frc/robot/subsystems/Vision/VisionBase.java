@@ -37,10 +37,8 @@ public class VisionBase extends SubsystemBase{
             setYawWithCameras(drivetrain);
         }
         
-        // Only send yaw to Limelight for MT2 after we have a valid orientation
-        if (hasInitializedGyro) {
-            vision.updateLimelightYaw(drivetrain);
-        }
+        vision.updateLimelightYaw(drivetrain);
+    
         
         //updating IO layer inputs from vision
         vision.updateVisionIOInputs(limelightOne, limelightTwo);
