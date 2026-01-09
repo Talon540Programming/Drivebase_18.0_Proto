@@ -139,19 +139,6 @@ public class VisionBase extends SubsystemBase{
             if (Math.abs(drivetrain.getFieldVelocity().omegaRadiansPerSecond) > Math.toRadians(180)){
                 continue;
             }
-
-            if(!hasInitializedGyro){
-                trustworthy = 
-                    (mt1Estimate.tagCount >= 2 && mt1Estimate.avgTagDist < 4.0) ||
-                    (mt1Estimate.tagCount == 1 && mt1Estimate.avgTagDist < 1.5);
-            }
-            else{
-                trustworthy = 
-                (mt1Estimate.tagCount >= 2 && mt1Estimate.avgTagDist < 2.0) ||
-                (mt1Estimate.tagCount == 1 && mt1Estimate.avgTagDist < 0.5);
-            }
-
-            if (trustworthy) {
                 Rotation2d visionYaw = mt1Estimate.pose.getRotation();
                 drivetrain.resetRotation(visionYaw);
                 hasInitializedGyro = true;
@@ -160,7 +147,6 @@ public class VisionBase extends SubsystemBase{
                 Logger.recordOutput("Vision/InitTagCount", mt1Estimate.tagCount);
                 Logger.recordOutput("Vision/InitAvgDist", mt1Estimate.avgTagDist);
                 return;
-            }
         }
     }
 
