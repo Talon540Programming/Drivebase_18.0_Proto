@@ -187,7 +187,7 @@ public class RobotContainer {
     }
 
     /*
-     * Final check for gyro initialization at teleop start.
+     * Final check for gyro initialization at Auto start.
      * If gyro hasn't been initialized, try one last time from cameras.
      * If cameras don't see anything, zero the gyro normally.
     */
