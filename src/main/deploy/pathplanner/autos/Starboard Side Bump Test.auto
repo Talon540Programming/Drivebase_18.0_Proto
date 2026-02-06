@@ -7,13 +7,13 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Test Path Start"
+            "pathName": "Starboard side bump"
           }
         },
         {
           "type": "path",
           "data": {
-            "pathName": "Test Path Ending Line"
+            "pathName": "Starboard side back from bump"
           }
         }
       ]
